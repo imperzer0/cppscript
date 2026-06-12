@@ -7,9 +7,8 @@
 #include <toml++/toml.hpp>
 
 #include "Log.hpp"
-#include "wrappers.cpp"
+#include "constants.h"
 
-#define APPNAME "cppscript"
 #define CONFIG_PATH "/etc/" APPNAME "/"
 #define MAIN_CONFIG "config.toml"
 

@@ -15,6 +15,7 @@
 
 #include <xxhash.h>
 
+#include "constants.h"
 #include "Log.hpp"
 #define XXH_STATIC_LINKING_ONLY
 
@@ -224,7 +225,14 @@ void run(const std::string& binary, char** argv)
     if (!Fork()) // Fork Environment below
     {
         DEBUG << "Running compiled script..." << Endl;
-        execvp(binary.c_str(), argv);
+
+        char* envp[] = {
+            const_cast<char*>("PARENT_APP_VERSION=" APP_VERSION),
+            const_cast<char*>("PARENT_APP_NAME=" APPNAME),
+            nullptr
+        };
+
+        execvpe(binary.c_str(), argv, envp);
 
         ERR << "execvp syscall failed." << Endl;
         ERR << "  " << strerrorname_np(errno) << ": " << strerrordesc_np(errno) << Endl;
