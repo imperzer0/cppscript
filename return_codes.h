@@ -1,0 +1,18 @@
+//
+// Created by jim on 12 Jun 2026.
+//
+
+#ifndef CPPSCRIPT_RETURN_CODES_H
+#define CPPSCRIPT_RETURN_CODES_H
+
+
+#define ERROR_OK 0
+#define ERROR_ARGUMENTS 1
+#define ERROR_FORK 2
+#define ERROR_EXECVE 3
+
+#define ERROR_CONFIG 11
+#define ERROR_CACHE 12
+
+
+#endif //CPPSCRIPT_RETURN_CODES_H
