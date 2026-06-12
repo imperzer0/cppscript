@@ -19,8 +19,6 @@
 #include "Log.hpp"
 #define XXH_STATIC_LINKING_ONLY
 
-#define GXX(sourcefile, binfile) "g++", "g++", "-O0", "-g0", sourcefile.c_str(), "-o", binfile.c_str()
-
 
 bool is_available_in_path(const std::string& executable)
 {
@@ -181,7 +179,7 @@ std::string compile(const std::string& source)
 
     std::string source_filename = std::filesystem::path(source).filename();
 
-    std::string compilable_source = cache_folder + "/" + source_filename;
+    std::string compilable_source = cache_folder + "/" + source_filename + ".cpp";
 
     remove_shebang(source, compilable_source);
 
@@ -205,12 +203,26 @@ std::string compile(const std::string& source)
     if (!ld.empty())
         ld = "-fuse-ld=" + ld;
 
+    std::string IClause = "-I" + Basename(realpath(source));
+    char* argvp[] = {
+        const_cast<char*>("g++"),
+        const_cast<char*>("-O0"),
+        const_cast<char*>("-g0"),
+        IClause.data(),
+        compilable_source.data(),
+        const_cast<char*>("-o"),
+        output_name.data(),
+        nullptr
+    };
+
     if (!Fork()) // Fork Environment below
     {
         DEBUG << "Compiling the script..." << Endl;
-        execlp(GXX(compilable_source, output_name), ld.empty() ? nullptr : ld.c_str(), nullptr);
 
-        ERR << "execlp syscall failed." << Endl;
+
+        execvp(argvp[0], argvp);
+
+        ERR << "execvp syscall failed." << Endl;
         ERR << "  " << strerrorname_np(errno) << ": " << strerrordesc_np(errno) << Endl;
         exit(ERROR_EXECVE);
     }
@@ -234,7 +246,7 @@ void run(const std::string& binary, char** argv)
 
         execvpe(binary.c_str(), argv, envp);
 
-        ERR << "execvp syscall failed." << Endl;
+        ERR << "execvpe syscall failed." << Endl;
         ERR << "  " << strerrorname_np(errno) << ": " << strerrordesc_np(errno) << Endl;
         exit(ERROR_EXECVE);
     }

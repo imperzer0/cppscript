@@ -11,6 +11,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <wordexp.h>
+#include <libgen.h>
 #include <linux/limits.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -114,6 +115,19 @@ void rm(const std::string& path)
 
     if (errno == ENOTDIR)
         unlink(path.c_str());
+}
+
+std::string Basename(const std::string& path)
+{
+    char tmp[path.length() + 1];
+    strncpy(tmp, path.c_str(), path.length() + 1);
+    tmp[path.length()] = 0;
+
+    char* result = dirname(tmp);
+
+    std::string res(result);
+
+    return std::move(res);
 }
 
 #endif //CPPSCRIPT_WRAPPERS_CPP

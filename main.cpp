@@ -21,8 +21,9 @@ int main(int argc, char** argv)
     for (int i = 1; i < argc; ++i)
     {
         int len = strlen(argv[i]);
-        args[i - 1] = new char[len];
+        args[i - 1] = new char[len + 1];
         strncpy(args[i - 1], argv[i], len);
+        args[i - 1][len] = 0;
     }
 
     args[argc - 1] = nullptr;
