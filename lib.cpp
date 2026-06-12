@@ -113,6 +113,50 @@ hash get_file_hash(const std::string& path)
     return sum;
 }
 
+void remove_shebang(const std::string& source, const std::string& dest)
+{
+    struct stat st{ };
+    if (::stat(source.c_str(), &st) < 0)
+    {
+        ERR << "Source file: " << source << " does not exist." << Endl;
+        exit(ERROR_ARGUMENTS);
+    }
+
+    std::ifstream ifs(source);
+    std::ofstream ofs(dest);
+
+    if (!ifs)
+    {
+        ERR << "Failed to open " << source << "." << Endl;
+        exit(ERROR_ARGUMENTS);
+    }
+
+    if (!ofs)
+    {
+        ERR << "Failed to open " << dest << "." << Endl;
+        exit(ERROR_CACHE);
+    }
+
+    std::string line;
+    bool first_line = true;
+
+    while (std::getline(ifs, line))
+    {
+        if (first_line)
+        {
+            first_line = false;
+
+            if (line.starts_with("#!"))
+                continue;
+        }
+
+        ofs << line << std::endl;
+    }
+
+    ifs.close();
+    ofs.close();
+}
+
 // Compiles source and returns binary location
 std::string compile(const std::string& source)
 {
@@ -134,14 +178,21 @@ std::string compile(const std::string& source)
     }
 
 
-    hash hash = get_file_hash(source);
+    std::string source_filename = std::filesystem::path(source).filename();
+
+    std::string compilable_source = cache_folder + "/" + source_filename;
+
+    remove_shebang(source, compilable_source);
+
+
+    hash hash = get_file_hash(compilable_source);
 
     std::string output_name = std::to_string(hash.val);
 
     if (hash.error)
     {
         WARN << "Could not compute file hash for " << source << "." << Endl;
-        output_name = source + ".bin";
+        output_name = source_filename + ".bin";
     }
 
     output_name = cache_folder + "/" + output_name;
@@ -156,12 +207,14 @@ std::string compile(const std::string& source)
     if (!Fork()) // Fork Environment below
     {
         DEBUG << "Compiling the script..." << Endl;
-        execlp(GXX(source, output_name), ld.empty() ? nullptr : ld.c_str(), nullptr);
+        execlp(GXX(compilable_source, output_name), ld.empty() ? nullptr : ld.c_str(), nullptr);
 
         ERR << "execlp syscall failed." << Endl;
         ERR << "  " << strerrorname_np(errno) << ": " << strerrordesc_np(errno) << Endl;
         exit(ERROR_EXECVE);
     }
+
+    unlink(compilable_source.c_str());
 
     return std::move(output_name);
 }
