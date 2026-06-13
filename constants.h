@@ -6,7 +6,7 @@
 #define CPPSCRIPT_CONSTANTS_H
 
 #ifndef APP_VERSION
-#define APP_VERSION "1.2.0"
+#define APP_VERSION "1.2.1"
 #endif //APP_VERSION
 
 #ifndef APPNAME

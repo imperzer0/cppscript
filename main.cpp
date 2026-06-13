@@ -12,7 +12,7 @@ void copy_argument(char*& dest, const char* src, int len)
 }
 
 
-int main(int argc, char** argv)
+int main(int argc, char* argv[], char* envp[])
 {
     if (argc < 2) // If we have arguments
     {
@@ -35,7 +35,7 @@ int main(int argc, char** argv)
     std::string output = compile(args[0]); // Compile the script
 
     // Run the binary
-    run(output, args);
+    run(output, args, envp);
 
     // If the binary is bigger than 64MiB don't keep it in cache
     struct stat st{ };

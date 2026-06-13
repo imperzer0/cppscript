@@ -243,19 +243,26 @@ std::string compile(const std::string& source)
     return std::move(output_name);
 }
 
-void run(const std::string& binary, char** argv)
+void run(const std::string& binary, char* argv[], char* envp[])
 {
+    DEBUG << "Running compiled script..." << Endl;
+
+    char* envp_modified[256]{ };
+
+    envp_modified[0] = const_cast<char*>("PARENT_APP_NAME=" APPNAME);
+    envp_modified[1] = const_cast<char*>("PARENT_APP_VERSION=" APP_VERSION);
+
+    for (int i = 2; i < 256; ++i) // skip first 2
+    {
+        if (envp[i] == nullptr)
+            break;
+
+        envp_modified[i] = envp[i];
+    }
+
     if (!Fork()) // Fork Environment below
     {
-        DEBUG << "Running compiled script..." << Endl;
-
-        char* envp[] = {
-            const_cast<char*>("PARENT_APP_VERSION=" APP_VERSION),
-            const_cast<char*>("PARENT_APP_NAME=" APPNAME),
-            nullptr
-        };
-
-        execvpe(binary.c_str(), argv, envp);
+        execvpe(binary.c_str(), argv, envp_modified);
 
         // This code is reached only if the execvp() call failed.
         ERR << "execvpe() syscall failed." << Endl;
