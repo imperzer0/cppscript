@@ -50,7 +50,7 @@ public:
     }
 
 
-    Log::LogLevel get_log_level()
+    Log::Level get_log_level()
     {
         auto toml_path = config["log_level"];
         if (toml_path.type() == toml::node_type::integer)
@@ -59,7 +59,7 @@ public:
         if (toml_path.type() == toml::node_type::string)
         {
             std::string val = toml_path.value_or("None");
-            Log::LogLevel log_level;
+            Log::Level log_level;
             if (val == "Error")
                 log_level = Log::Error;
             else if (val == "Warning")
