@@ -112,10 +112,11 @@ hash get_file_hash(const std::string& path)
     return sum;
 }
 
+// Copies file from source to dest and removes shebang from the top
 void remove_shebang(const std::string& source, const std::string& dest)
 {
     struct stat st{ };
-    if (::stat(source.c_str(), &st) < 0)
+    if (::stat(source.c_str(), &st) < 0) // if source does not exist
     {
         ERR << "Source file: " << source << " does not exist." << Endl;
         exit(ERROR_ARGUMENTS);
@@ -146,7 +147,7 @@ void remove_shebang(const std::string& source, const std::string& dest)
             first_line = false;
 
             if (line.starts_with("#!"))
-                continue;
+                continue; // Do not copy this line - it's shebang
         }
 
         ofs << line << std::endl;
@@ -156,34 +157,34 @@ void remove_shebang(const std::string& source, const std::string& dest)
     ofs.close();
 }
 
-// Compiles source and returns binary location
+// Compiles source and returns binary file path
 std::string compile(const std::string& source)
 {
+    // wordexp performs shell-like path expansion
+    // Mostly to expand ~ into /home/user
     std::string cache_folder = wordexp(MainConfig::Instance().get_cache_folder_path());
 
     struct stat st{ };
-    if (::stat(cache_folder.c_str(), &st) < 0)
+    if (::stat(cache_folder.c_str(), &st) < 0) // if it does not exist
         mkdir_p(cache_folder.c_str(), S_IRWXG | S_IRWXU | S_IROTH);
-    else
+    else if (!S_ISDIR(st.st_mode) && !S_ISLNK(st.st_mode)) // if it is not a dir and not a symlink
     {
-        if (!S_ISDIR(st.st_mode) && !S_ISLNK(st.st_mode))
-        {
-            ERR << "Path: " << cache_folder << " is neither a directory nor a link." << Endl;
-            exit(ERROR_CACHE);
-        }
-
-        if (S_ISLNK(st.st_mode))
-            cache_folder = realpath(cache_folder);
+        ERR << "Path: " << cache_folder << " is neither a directory nor a link." << Endl;
+        exit(ERROR_CACHE);
     }
 
 
     std::string source_filename = std::filesystem::path(source).filename();
 
+    // A copy of the source file
+    // Always with .cpp extension
+    // Without shebang at the top, so g++ compilation doesn't fail
     std::string compilable_source = cache_folder + "/" + source_filename + ".cpp";
 
     remove_shebang(source, compilable_source);
 
 
+    // Shebangless source's hash
     hash hash = get_file_hash(compilable_source);
 
     std::string output_name = std::to_string(hash.val);
@@ -191,27 +192,36 @@ std::string compile(const std::string& source)
     if (hash.error)
     {
         WARN << "Could not compute file hash for " << source << "." << Endl;
-        output_name = source_filename + ".bin";
+        output_name = source_filename + ".bin"; // fall back to source name + .bin
     }
 
+    // Prepend output file name with cache directory path to make it a valid path
     output_name = cache_folder + "/" + output_name;
 
     if (!hash.error && ::stat(output_name.c_str(), &st) == 0 && S_ISREG(st.st_mode))
         return output_name; // Is already compiled.
 
+    // Is not yet compiled
+
+    // Use a faster linker
     std::string ld = get_best_available_ld();
     if (!ld.empty())
         ld = "-fuse-ld=" + ld;
 
-    std::string IClause = "-I" + Basename(realpath(source));
+    // -I<path> makes gcc look for includes here and treat this folder
+    // as if it were current directory.
+    // This allows scripts to include files relative to their own directory
+    std::string IClause = "-I" + Dirname(realpath(source));
+
     char* argvp[] = {
-        const_cast<char*>("g++"),
+        const_cast<char*>("g++") /* appname */,
         const_cast<char*>("-O0"),
         const_cast<char*>("-g0"),
         IClause.data(),
         compilable_source.data(),
         const_cast<char*>("-o"),
         output_name.data(),
+        ld.empty() ? nullptr : ld.data(),
         nullptr
     };
 
@@ -222,7 +232,8 @@ std::string compile(const std::string& source)
 
         execvp(argvp[0], argvp);
 
-        ERR << "execvp syscall failed." << Endl;
+        // This code is reached only if the execvp() call failed.
+        ERR << "execvp() syscall failed." << Endl;
         ERR << "  " << strerrorname_np(errno) << ": " << strerrordesc_np(errno) << Endl;
         exit(ERROR_EXECVE);
     }
@@ -246,7 +257,8 @@ void run(const std::string& binary, char** argv)
 
         execvpe(binary.c_str(), argv, envp);
 
-        ERR << "execvpe syscall failed." << Endl;
+        // This code is reached only if the execvp() call failed.
+        ERR << "execvpe() syscall failed." << Endl;
         ERR << "  " << strerrorname_np(errno) << ": " << strerrordesc_np(errno) << Endl;
         exit(ERROR_EXECVE);
     }

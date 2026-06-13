@@ -4,7 +4,7 @@
 #include "lib.cpp"
 
 
-void copy_argument(char* dest, const char* src, int len)
+void copy_argument(char*& dest, const char* src, int len)
 {
     dest = new char[len + 1];
     strncpy(dest, src, len);
@@ -34,14 +34,8 @@ int main(int argc, char** argv)
 
     std::string output = compile(args[0]); // Compile the script
 
-    // Free initial string
-    delete[] args[0];
-
-    // Replace it with compiled binary name
-    copy_argument(args[0], output.c_str(), output.length());
-
     // Run the binary
-    run(args[0], args);
+    run(output, args);
 
     // If the binary is bigger than 64MiB don't keep it in cache
     struct stat st{ };

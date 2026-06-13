@@ -19,6 +19,7 @@
 #include "Log.hpp"
 #include "return_codes.h"
 
+// fork() and wait for child pid
 pid_t Fork()
 {
     pid_t pid = fork();
@@ -34,7 +35,7 @@ pid_t Fork()
         pid_t waited_pid = ::waitpid(pid, &status, 0);
 
         if (waited_pid == -1)
-            WARN << "waitpid() syscall failed." << Endl;
+            ERR << "waitpid() syscall failed." << Endl;
 
         if (WIFEXITED(status))
             INFO << "Child exited normally with status " << WEXITSTATUS(status) << "." << Endl;
@@ -55,11 +56,11 @@ std::string realpath(const std::string& path)
     {
         if (errno)
         {
-            WARN << "realpath() failed for: " << path << Endl;
-            WARN << "  Error: " << strerrorname_np(errno) << ": " << strerrordesc_np(errno) << "." << Endl;
+            DEBUG << "realpath() failed for: " << path << Endl;
+            DEBUG << "  Error: " << strerrorname_np(errno) << ": " << strerrordesc_np(errno) << "." << Endl;
         }
         free(resolved_path);
-        return new char[1]{ };
+        return { };
     }
 
     resolved_path[PATH_MAX - 1] = 0; // Terminate the string
@@ -69,6 +70,7 @@ std::string realpath(const std::string& path)
     return std::move(res);
 }
 
+// mkdir -p functionality
 int mkdir_p(const std::string& path, mode_t mode)
 {
     char tmp[PATH_MAX];
@@ -117,7 +119,9 @@ void rm(const std::string& path)
         unlink(path.c_str());
 }
 
-std::string Basename(const std::string& path)
+// Returns the directory
+// Example: /foo/bar/1.cpp -> /foo/bar
+std::string Dirname(const std::string& path)
 {
     char tmp[path.length() + 1];
     strncpy(tmp, path.c_str(), path.length() + 1);
