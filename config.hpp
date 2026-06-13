@@ -12,7 +12,9 @@
 #define CONFIG_PATH "/etc/" APPNAME "/"
 #define MAIN_CONFIG "config.toml"
 
-class Config // Interface
+// Interface
+// Meant to be extended, only handles config parsing
+class Config
 {
 protected:
     toml::table config;
@@ -27,13 +29,15 @@ class MainConfig : Config
     MainConfig() : Config(CONFIG_PATH MAIN_CONFIG) { }
 
 public:
+    // Singleton Instance
     static MainConfig& Instance()
     {
-        if (!instance)
-            instance = new MainConfig();
+        if (instance == nullptr)
+            instance = new MainConfig(); // Create only one instance
         return *instance;
     }
 
+    // Get Cache Folder Path from main config
     std::string get_cache_folder_path()
     {
         auto toml_path = config["cache"]["folder"];
@@ -50,6 +54,8 @@ public:
     }
 
 
+    // Get Log Level from main config
+    // In the config it can be a string or an integer
     Log::Level get_log_level()
     {
         auto toml_path = config["log_level"];
@@ -73,7 +79,7 @@ public:
             return log_level;
         }
 
-        return Log::None;
+        return Log::None; // If something went wrong just leave it off
     }
 };
 
