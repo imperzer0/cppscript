@@ -25,22 +25,19 @@ int main(int argc, char* argv[], char* envp[])
 
     Log::Set_LogLevel(MainConfig::Instance().get_log_level());
 
-    char** args = new char*[argc]; // A copy of script's arguments
 
-    for (int i = 1; i < argc; ++i) // Copy each argument
-        copy_argument(args[i - 1], argv[i], strlen(argv[i]));
+    int envp_size = 0;
+    for (; envp[envp_size] != nullptr; ++envp_size) { }
 
-    args[argc - 1] = nullptr; // Last argument should be NULL
-
-    std::string output = compile(args[0]); // Compile the script
+    std::string output = compile(argv[1], {envp, envp + envp_size}); // Compile the script
 
     // Run the binary
-    run(output, args, envp);
+    run(output, {argv + 1, argv + argc}, {envp, envp + envp_size});
 
     // If the binary is bigger than 64MiB don't keep it in cache
     struct stat st{ };
-    if (::stat(args[0], &st) == 0 && st.st_size >= 64 * 1024 * 1024)
-        rm(args[0]); // Remove large files
+    if (::stat(output.c_str(), &st) == 0 && st.st_size >= 64 * 1024 * 1024)
+        rm(output); // Remove large files
 
     return ERROR_OK; // Exit Successfully
 }

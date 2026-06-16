@@ -81,6 +81,29 @@ public:
 
         return Log::None; // If something went wrong just leave it off
     }
+
+    using CXX_Flags = std::vector<std::string>;
+
+    CXX_Flags get_cxx_flags()
+    {
+        auto toml_path = config["cxx"]["flags"];
+
+        if (toml_path.type() != toml::node_type::array)
+        {
+            // Not an array
+            if (toml_path.type() == toml::node_type::string)
+                return {toml_path.value_or("")}; // A string
+            return CXX_Flags{ };                  // Something else - return empty array
+        }
+
+        CXX_Flags res = { };
+
+        for (const auto& arg : *toml_path.as_array())
+            if (arg.type() == toml::node_type::string)
+                res.push_back(arg.value_or(""));
+
+        return std::move(res);
+    }
 };
 
 MainConfig* MainConfig::instance = nullptr;

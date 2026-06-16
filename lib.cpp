@@ -158,7 +158,7 @@ void remove_shebang(const std::string& source, const std::string& dest)
 }
 
 // Compiles source and returns binary file path
-std::string compile(const std::string& source)
+std::string compile(const std::string& source, std::vector<char*> envp)
 {
     // wordexp performs shell-like path expansion
     // Mostly to expand ~ into /home/user
@@ -213,7 +213,7 @@ std::string compile(const std::string& source)
     // This allows scripts to include files relative to their own directory
     std::string IClause = "-I" + Dirname(realpath(source));
 
-    char* argvp[] = {
+    std::vector<char*> argv = {
         const_cast<char*>("g++") /* appname */,
         const_cast<char*>("-O0"),
         const_cast<char*>("-g0"),
@@ -221,19 +221,31 @@ std::string compile(const std::string& source)
         compilable_source.data(),
         const_cast<char*>("-o"),
         output_name.data(),
-        ld.empty() ? nullptr : ld.data(),
-        nullptr
+        ld.empty() ? nullptr : ld.data()
     };
+
+    if (argv.back() == nullptr)
+        argv.pop_back();
+
+    auto extra_argv = MainConfig::Instance().get_cxx_flags();
+
+    for (auto& arg : extra_argv)
+        argv.push_back(arg.data());
+
+    // Make sure argv ends with NULL
+    if (argv.back() != nullptr)
+        argv.push_back(nullptr);
+
 
     if (!Fork()) // Fork Environment below
     {
         DEBUG << "Compiling the script..." << Endl;
 
 
-        execvp(argvp[0], argvp);
+        execvpe(argv[0], argv.data(), envp.data());
 
         // This code is reached only if the execvp() call failed.
-        ERR << "execvp() syscall failed." << Endl;
+        ERR << "[Compile] execvpe() syscall failed." << Endl;
         ERR << "  " << strerrorname_np(errno) << ": " << strerrordesc_np(errno) << Endl;
         exit(ERROR_EXECVE);
     }
@@ -243,29 +255,31 @@ std::string compile(const std::string& source)
     return std::move(output_name);
 }
 
-void run(const std::string& binary, char* argv[], char* envp[])
+void run(const std::string& binary, std::vector<char*> argv, std::vector<char*> envp)
 {
     DEBUG << "Running compiled script..." << Endl;
 
-    char* envp_modified[256]{ };
+    // Make sure argv ends with NULL
+    if (argv.back() != nullptr)
+        argv.push_back(nullptr);
 
-    envp_modified[0] = const_cast<char*>("PARENT_APP_NAME=" APPNAME);
-    envp_modified[1] = const_cast<char*>("PARENT_APP_VERSION=" APP_VERSION);
+    // Remove NULL
+    if (envp.back() == nullptr)
+        envp.pop_back();
 
-    for (int i = 2; i < 256; ++i) // skip first 2
-    {
-        if (envp[i] == nullptr)
-            break;
+    envp.push_back(const_cast<char*>("PARENT_APP_NAME=" APPNAME));
+    envp.push_back(const_cast<char*>("PARENT_APP_VERSION=" APP_VERSION));
 
-        envp_modified[i] = envp[i];
-    }
+    // Make sure envp ends with NULL
+    if (envp.back() != nullptr)
+        envp.push_back(nullptr);
 
     if (!Fork()) // Fork Environment below
     {
-        execvpe(binary.c_str(), argv, envp_modified);
+        execvpe(binary.c_str(), argv.data(), envp.data());
 
         // This code is reached only if the execvp() call failed.
-        ERR << "execvpe() syscall failed." << Endl;
+        ERR << "[Run] execvpe() syscall failed." << Endl;
         ERR << "  " << strerrorname_np(errno) << ": " << strerrordesc_np(errno) << Endl;
         exit(ERROR_EXECVE);
     }
