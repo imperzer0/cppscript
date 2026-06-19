@@ -193,6 +193,10 @@ std::string compile(const std::string& source, std::vector<char*> envp)
     // Without shebang at the top, so g++ compilation doesn't fail
     std::string compilable_source = cache_folder + "/" + source_filename + ".cpp";
 
+    // If it exists try another name
+    for (int i = 0; stat(compilable_source.c_str(), &st) == 0 && i < 1000; ++i)
+        compilable_source = cache_folder + "/" + source_filename + "." + std::to_string(i) + ".cpp";
+
     remove_shebang(source, compilable_source);
 
 
