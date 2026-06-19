@@ -7,6 +7,7 @@
 #define CPPSCRIPT_LIB_CPP
 
 
+#include <complex>
 #include <sstream>
 #include <sys/stat.h>
 
@@ -157,6 +158,17 @@ void remove_shebang(const std::string& source, const std::string& dest)
     ofs.close();
 }
 
+#define PRINT_ARR(arr) arr, #arr
+
+void print_array(const std::vector<char*>& arr, const std::string& name) noexcept
+{
+    auto arr_line = ERR;
+    arr_line = std::move(arr_line) << "  " << name << " = { " << (arr[0] != nullptr ? arr[0] : "NULL");
+    for (int i = 1; i < arr.size(); ++i)
+        arr_line = std::move(arr_line) << ", " << (arr[i] != nullptr ? arr[i] : "NULL");
+    std::move(arr_line) << " };" << Endl;
+}
+
 // Compiles source and returns binary file path
 std::string compile(const std::string& source, std::vector<char*> envp)
 {
@@ -236,6 +248,10 @@ std::string compile(const std::string& source, std::vector<char*> envp)
     if (argv.back() != nullptr)
         argv.push_back(nullptr);
 
+    // Make sure envp ends with NULL
+    if (envp.back() != nullptr)
+        envp.push_back(nullptr);
+
 
     if (!Fork()) // Fork Environment below
     {
@@ -247,6 +263,10 @@ std::string compile(const std::string& source, std::vector<char*> envp)
         // This code is reached only if the execvp() call failed.
         ERR << "[Compile] execvpe() syscall failed." << Endl;
         ERR << "  " << strerrorname_np(errno) << ": " << strerrordesc_np(errno) << Endl;
+
+        print_array(PRINT_ARR(argv));
+        print_array(PRINT_ARR(envp));
+
         exit(ERROR_EXECVE);
     }
 
@@ -281,6 +301,10 @@ void run(const std::string& binary, std::vector<char*> argv, std::vector<char*> 
         // This code is reached only if the execvp() call failed.
         ERR << "[Run] execvpe() syscall failed." << Endl;
         ERR << "  " << strerrorname_np(errno) << ": " << strerrordesc_np(errno) << Endl;
+
+        print_array(PRINT_ARR(argv));
+        print_array(PRINT_ARR(envp));
+
         exit(ERROR_EXECVE);
     }
 }

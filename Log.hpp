@@ -45,6 +45,10 @@ public:
 
     Log() = delete;
 
+    Log(Log&&) = default;
+
+    Log& operator=(Log&&) noexcept = default;
+
     static void Set_LogLevel(Level level) { max_level = level; }
 
 private:
@@ -94,7 +98,7 @@ Log&& operator<<(Log&& log, const Out& out)
     {
         if (Log::max_level > 0)
             std::cerr << "         "; // Append spacing
-        log.is_endl = false; // Reset
+        log.is_endl = false;          // Reset
     }
     std::cerr << out;
     return std::move(log);
