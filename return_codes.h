@@ -10,6 +10,7 @@
 #define ERROR_ARGUMENTS 1
 #define ERROR_FORK 2
 #define ERROR_EXECVE 3
+#define ERROR_CHILD_DIED 4
 
 #define ERROR_CONFIG 11
 #define ERROR_CACHE 12

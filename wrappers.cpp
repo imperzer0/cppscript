@@ -43,8 +43,11 @@ pid_t Fork()
             std::move(logtype) << "Child exited with status " << WEXITSTATUS(status) << "." << Endl;
         }
         else if (WIFSIGNALED(status))
-            WARN << "Child was terminated by signal "
-                << WTERMSIG(status) << " - " << strsignal(WTERMSIG(status)) << "." << Endl;
+        {
+            ERR << "Child was terminated by signal "
+                   << WTERMSIG(status) << " - " << strsignal(WTERMSIG(status)) << "." << Endl;
+            exit(ERROR_CHILD_DIED);
+        }
 
         INFO << "Resuming parent process..." << Endl;
     }

@@ -162,7 +162,7 @@ void remove_shebang(const std::string& source, const std::string& dest)
 
 void print_array(const std::vector<char*>& arr, const std::string& name) noexcept
 {
-    auto arr_line = ERR;
+    auto arr_line = DEBUG;
     arr_line = std::move(arr_line) << "  " << name << " = { " << (arr[0] != nullptr ? arr[0] : "NULL");
     for (int i = 1; i < arr.size(); ++i)
         arr_line = std::move(arr_line) << ", " << (arr[i] != nullptr ? arr[i] : "NULL");
