@@ -38,7 +38,10 @@ pid_t Fork()
             ERR << "waitpid() syscall failed." << Endl;
 
         if (WIFEXITED(status))
-            INFO << "Child exited normally with status " << WEXITSTATUS(status) << "." << Endl;
+        {
+            auto logtype = (WEXITSTATUS(status) == 0 ? INFO : ERR);
+            std::move(logtype) << "Child exited with status " << WEXITSTATUS(status) << "." << Endl;
+        }
         else if (WIFSIGNALED(status))
             WARN << "Child was terminated by signal "
                 << WTERMSIG(status) << " - " << strsignal(WTERMSIG(status)) << "." << Endl;
