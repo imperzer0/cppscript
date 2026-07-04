@@ -104,6 +104,27 @@ public:
 
         return std::move(res);
     }
+
+    CXX_Flags get_preprocessing_flags()
+    {
+        auto toml_path = config["preprocessing"]["flags"];
+
+        if (toml_path.type() != toml::node_type::array)
+        {
+            // Not an array
+            if (toml_path.type() == toml::node_type::string)
+                return {toml_path.value_or("")}; // A string
+            return CXX_Flags{ };                  // Something else - return empty array
+        }
+
+        CXX_Flags res = { };
+
+        for (const auto& arg : *toml_path.as_array())
+            if (arg.type() == toml::node_type::string)
+                res.push_back(arg.value_or(""));
+
+        return std::move(res);
+    }
 };
 
 MainConfig* MainConfig::instance = nullptr;

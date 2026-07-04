@@ -172,6 +172,12 @@ void print_array(const std::vector<char*>& arr, const std::string& name) noexcep
 // Compiles source and returns binary file path
 std::string compile(const std::string& source, std::vector<char*> envp)
 {
+    // Make sure envp ends with NULL
+    // Necessary for compilations below
+    if (envp.back() != nullptr)
+        envp.push_back(nullptr);
+
+
     // wordexp performs shell-like path expansion
     // Mostly to expand ~ into /home/user
     std::string cache_folder = wordexp(MainConfig::Instance().get_cache_folder_path());
@@ -191,17 +197,74 @@ std::string compile(const std::string& source, std::vector<char*> envp)
     // A copy of the source file
     // Always with .cpp extension
     // Without shebang at the top, so g++ compilation doesn't fail
-    std::string compilable_source = cache_folder + "/" + source_filename + ".cpp";
+    std::string raw_source = cache_folder + "/" + source_filename + ".cpp";
 
     // If it exists try another name
-    for (int i = 0; stat(compilable_source.c_str(), &st) == 0 && i < 1000; ++i)
-        compilable_source = cache_folder + "/" + source_filename + "." + std::to_string(i) + ".cpp";
+    for (int i = 0; stat(raw_source.c_str(), &st) == 0 && i < 1000; ++i)
+        raw_source = cache_folder + "/" + source_filename + "." + std::to_string(i) + ".cpp";
 
-    remove_shebang(source, compilable_source);
+    remove_shebang(source, raw_source);
+
+
+    // raw_source + resolved dependencies
+    std::string resolved_source = cache_folder + "/" + source_filename + ".ii";
+
+    // If it exists try another name
+    for (int i = 0; stat(resolved_source.c_str(), &st) == 0 && i < 1000; ++i)
+        resolved_source = cache_folder + "/" + source_filename + "." + std::to_string(i) + ".ii";
+
+
+    // -I<path> makes gcc look for includes here and treat this folder
+    // as if it were current directory.
+    // This allows scripts to include files relative to their own directory
+    std::string IClause = "-I" + Dirname(realpath(source));
+
+    std::vector<char*> argv_dep = {
+        const_cast<char*>("g++"),
+        /* appname */
+        const_cast<char*>("-E"),
+        IClause.data(),
+        raw_source.data(),
+        const_cast<char*>("-o"),
+        resolved_source.data()
+    };
+
+    auto extra_argv_dep = MainConfig::Instance().get_preprocessing_flags();
+
+    if (argv_dep.back() == nullptr)
+        argv_dep.pop_back();
+
+    for (auto& arg : extra_argv_dep)
+        argv_dep.push_back(arg.data());
+
+    // Make sure argv ends with NULL
+    if (argv_dep.back() != nullptr)
+        argv_dep.push_back(nullptr);
+
+
+    if (!Fork()) // g++ -E
+    {
+        DEBUG << "Resolving dependencies..." << Endl;
+
+
+        execvpe(argv_dep[0], argv_dep.data(), envp.data());
+
+        // This code is reached only if the execvp() call failed.
+        ERR << "[Compile] execvpe(g++ -E) syscall failed." << Endl;
+        ERR << "  " << strerrorname_np(errno) << ": " << strerrordesc_np(errno) << Endl;
+
+        print_array(PRINT_ARR(argv_dep));
+        print_array(PRINT_ARR(envp));
+
+        exit(ERROR_EXECVE);
+    }
+
+    // Can be deleted - we don't need it anymore
+    unlink(raw_source.c_str());
 
 
     // Shebangless source's hash
-    hash hash = get_file_hash(compilable_source);
+    hash hash = get_file_hash(resolved_source);
 
     std::string output_name = std::to_string(hash.val);
 
@@ -215,7 +278,11 @@ std::string compile(const std::string& source, std::vector<char*> envp)
     output_name = cache_folder + "/" + output_name;
 
     if (!hash.error && ::stat(output_name.c_str(), &st) == 0 && S_ISREG(st.st_mode))
-        return output_name; // Is already compiled.
+    {
+        // Is already compiled.
+        unlink(resolved_source.c_str());
+        return output_name;
+    }
 
     // Is not yet compiled
 
@@ -224,26 +291,20 @@ std::string compile(const std::string& source, std::vector<char*> envp)
     if (!ld.empty())
         ld = "-fuse-ld=" + ld;
 
-    // -I<path> makes gcc look for includes here and treat this folder
-    // as if it were current directory.
-    // This allows scripts to include files relative to their own directory
-    std::string IClause = "-I" + Dirname(realpath(source));
-
     std::vector<char*> argv = {
         const_cast<char*>("g++") /* appname */,
         const_cast<char*>("-O0"),
         const_cast<char*>("-g0"),
-        IClause.data(),
-        compilable_source.data(),
+        resolved_source.data(),
         const_cast<char*>("-o"),
         output_name.data(),
         ld.empty() ? nullptr : ld.data()
     };
 
+    auto extra_argv = MainConfig::Instance().get_cxx_flags();
+
     if (argv.back() == nullptr)
         argv.pop_back();
-
-    auto extra_argv = MainConfig::Instance().get_cxx_flags();
 
     for (auto& arg : extra_argv)
         argv.push_back(arg.data());
@@ -252,12 +313,7 @@ std::string compile(const std::string& source, std::vector<char*> envp)
     if (argv.back() != nullptr)
         argv.push_back(nullptr);
 
-    // Make sure envp ends with NULL
-    if (envp.back() != nullptr)
-        envp.push_back(nullptr);
-
-
-    if (!Fork()) // Fork Environment below
+    if (!Fork()) // g++ <...>.ii -o <...>
     {
         DEBUG << "Compiling the script..." << Endl;
 
@@ -265,7 +321,7 @@ std::string compile(const std::string& source, std::vector<char*> envp)
         execvpe(argv[0], argv.data(), envp.data());
 
         // This code is reached only if the execvp() call failed.
-        ERR << "[Compile] execvpe() syscall failed." << Endl;
+        ERR << "[Compile] execvpe(g++ <...>.ii -o <...>) syscall failed." << Endl;
         ERR << "  " << strerrorname_np(errno) << ": " << strerrordesc_np(errno) << Endl;
 
         print_array(PRINT_ARR(argv));
@@ -274,7 +330,7 @@ std::string compile(const std::string& source, std::vector<char*> envp)
         exit(ERROR_EXECVE);
     }
 
-    unlink(compilable_source.c_str());
+    unlink(resolved_source.c_str());
 
     return std::move(output_name);
 }
