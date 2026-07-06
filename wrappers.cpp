@@ -20,7 +20,7 @@
 #include "return_codes.h"
 
 // fork() and wait for child pid
-pid_t Fork()
+pid_t Fork(bool wait = true)
 {
     pid_t pid = fork();
     if (pid < 0)
@@ -29,8 +29,10 @@ pid_t Fork()
         exit(ERROR_FORK);
     }
 
-    if (pid > 0)
+    if (pid > 0 && wait)
     {
+        INFO << "Waiting for child..." << Endl;
+
         int status;
         pid_t waited_pid = ::waitpid(pid, &status, 0);
 
@@ -45,7 +47,7 @@ pid_t Fork()
         else if (WIFSIGNALED(status))
         {
             ERR << "Child was terminated by signal "
-                   << WTERMSIG(status) << " - " << strsignal(WTERMSIG(status)) << "." << Endl;
+                << WTERMSIG(status) << " - " << strsignal(WTERMSIG(status)) << "." << Endl;
             exit(ERROR_CHILD_DIED);
         }
 
