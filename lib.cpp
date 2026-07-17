@@ -11,6 +11,8 @@
 #include <sstream>
 #include <deque>
 #include <sys/stat.h>
+#include <fcntl.h>
+#include <dirent.h>
 
 #include "config.hpp"
 #include "wrappers.cpp"
@@ -32,9 +34,8 @@ bool is_available_in_path(const std::string& executable)
     std::stringstream ss(path_str);
     std::string directory;
 
-    char delim = ':';
 
-    while (std::getline(ss, directory, delim))
+    for (char delim = ':'; std::getline(ss, directory, delim);)
     {
         if (directory.empty())
             continue; // Skip "" directories
@@ -74,18 +75,18 @@ struct hash
 
 hash compute_hash(const std::deque<std::string>& paths)
 {
-    DEBUG << "Computing hash..." << Endl;
+    DEBUG << __FN__ "Computing hash..." << Endl;
 
     XXH3_state_t* XXH3 = XXH3_createState();
     if (XXH3 == nullptr)
     {
-        WARN << "Hash Error: Could not initialize XXH3 state." << Endl;
+        WARN << __FN__ "Hash Error: Could not initialize XXH3 state." << Endl;
         return hash{.error = 1};
     }
 
     if (XXH3_64bits_reset(XXH3) == XXH_ERROR)
     {
-        WARN << "Hash Error: Could not reset XXH3." << Endl;
+        WARN << __FN__ "Hash Error: Could not reset XXH3." << Endl;
         XXH3_freeState(XXH3);
         return hash{.error = 1};
     }
@@ -98,7 +99,7 @@ hash compute_hash(const std::deque<std::string>& paths)
         std::ifstream ifs(path, std::ios::binary);
         if (!ifs.is_open())
         {
-            WARN << "Hash Error: Could not open file " << path << Endl;
+            WARN << __FN__ "Hash Error: Could not open file " << path << Endl;
             return hash{.error = 1};
         }
 
@@ -106,7 +107,7 @@ hash compute_hash(const std::deque<std::string>& paths)
         {
             if (XXH3_64bits_update(XXH3, buffer.data(), ifs.gcount()) == XXH_ERROR)
             {
-                WARN << "Hash Error: Failed to update hash for file " << path << Endl;
+                WARN << __FN__ "Hash Error: Failed to update hash for file " << path << Endl;
                 XXH3_freeState(XXH3);
                 return hash{.error = 1};
             }
@@ -126,7 +127,7 @@ void remove_shebang(const std::string& source, const std::string& dest)
     struct stat st{ };
     if (::stat(source.c_str(), &st) < 0) // if source does not exist
     {
-        ERR << "Source file: " << source << " does not exist." << Endl;
+        ERR << __FN__ "Source file: " << source << " does not exist." << Endl;
         exit(ERROR_ARGUMENTS);
     }
 
@@ -135,20 +136,18 @@ void remove_shebang(const std::string& source, const std::string& dest)
 
     if (!ifs)
     {
-        ERR << "Failed to open " << source << "." << Endl;
+        ERR << __FN__ "Failed to open " << source << "." << Endl;
         exit(ERROR_ARGUMENTS);
     }
 
     if (!ofs)
     {
-        ERR << "Failed to open " << dest << "." << Endl;
+        ERR << __FN__ "Failed to open " << dest << "." << Endl;
         exit(ERROR_CACHE);
     }
 
-    std::string line;
     bool first_line = true;
-
-    while (std::getline(ifs, line))
+    for (std::string line; std::getline(ifs, line);)
     {
         if (first_line)
         {
@@ -276,7 +275,7 @@ std::string compile(const std::string& source, std::vector<char*> envp)
         mkdir_p(cache_folder.c_str(), S_IRWXG | S_IRWXU | S_IROTH);
     else if (!S_ISDIR(st.st_mode) && !S_ISLNK(st.st_mode)) // if it is not a dir and not a symlink
     {
-        ERR << "Path: " << cache_folder << " is neither a directory nor a link." << Endl;
+        ERR << __FN__ "Path: " << cache_folder << " is neither a directory nor a link." << Endl;
         exit(ERROR_CACHE);
     }
 
@@ -320,14 +319,14 @@ std::string compile(const std::string& source, std::vector<char*> envp)
         if (stdout_pipe[1] >= 0) // Check if open
             dup2(stdout_pipe[1], STDOUT_FILENO);
 
-        DEBUG << "Resolving dependencies..." << Endl;
+        DEBUG << __FN__ "Resolving dependencies..." << Endl;
 
 
         execvpe(argv_dep[0], argv_dep.data(), envp.data());
 
         // This code is reached only if the execvp() call failed.
-        ERR << "[Compile] execvpe(g++ -MM) syscall failed." << Endl;
-        ERR << "  " << strerrorname_np(errno) << ": " << strerrordesc_np(errno) << Endl;
+        ERR << __FN__ "[Compile] execvpe(g++ -MM) syscall failed." << Endl;
+        ERR << __FN__ "  " << strerrorname_np(errno) << ": " << strerrordesc_np(errno) << Endl;
 
         print_array(PRINT_ARR(argv_dep));
         print_array(PRINT_ARR(envp));
@@ -364,7 +363,7 @@ std::string compile(const std::string& source, std::vector<char*> envp)
 
     if (hash.error)
     {
-        WARN << "Could not compute file hash for " << source << "." << Endl;
+        WARN << __FN__ "Could not compute file hash for " << source << "." << Endl;
         output_name = source_filename + ".bin"; // fall back to source name + .bin
     }
 
@@ -410,14 +409,14 @@ std::string compile(const std::string& source, std::vector<char*> envp)
 
     if (!Fork()) // g++ <...>.ii -o <...>
     {
-        DEBUG << "Compiling the script..." << Endl;
+        DEBUG << __FN__ "Compiling the script..." << Endl;
 
 
         execvpe(argv[0], argv.data(), envp.data());
 
         // This code is reached only if the execvp() call failed.
-        ERR << "[Compile] execvpe(g++ <...>.ii -o <...>) syscall failed." << Endl;
-        ERR << "  " << strerrorname_np(errno) << ": " << strerrordesc_np(errno) << Endl;
+        ERR << __FN__ "[Compile] execvpe(g++ <...>.ii -o <...>) syscall failed." << Endl;
+        ERR << __FN__ "  " << strerrorname_np(errno) << ": " << strerrordesc_np(errno) << Endl;
 
         print_array(PRINT_ARR(argv));
         print_array(PRINT_ARR(envp));
@@ -432,7 +431,7 @@ std::string compile(const std::string& source, std::vector<char*> envp)
 
 void run(const std::string& binary, std::vector<char*> argv, std::vector<char*> envp)
 {
-    DEBUG << "Running compiled script..." << Endl;
+    DEBUG << __FN__ "Running compiled script..." << Endl;
 
     // Make sure argv ends with NULL
     if (argv.back() != nullptr)
@@ -454,13 +453,93 @@ void run(const std::string& binary, std::vector<char*> argv, std::vector<char*> 
         execvpe(binary.c_str(), argv.data(), envp.data());
 
         // This code is reached only if the execvp() call failed.
-        ERR << "[Run] execvpe() syscall failed." << Endl;
-        ERR << "  " << strerrorname_np(errno) << ": " << strerrordesc_np(errno) << Endl;
+        ERR << __FN__ "[Run] execvpe() syscall failed." << Endl;
+        ERR << __FN__ "  " << strerrorname_np(errno) << ": " << strerrordesc_np(errno) << Endl;
 
         print_array(PRINT_ARR(argv));
         print_array(PRINT_ARR(envp));
 
         exit(ERROR_EXECVE);
+    }
+}
+
+#define A_WEEK 604800 // in seconds
+#define AN_HOUR  3600 // in seconds
+#define LAST_SCAN ".last_scan"
+// Removes old cache entries
+void cache_autoclean(const std::string& last_file)
+{
+    DEBUG << __FN__ "Performing Automatic Cache Management..." << Endl;
+
+    // If the binary is bigger than 64MiB don't keep it in cache
+    struct stat st{ };
+    if (::stat(last_file.c_str(), &st) == 0 &&
+        st.st_size >= 64 * 1024 * 1024)
+        rm(last_file); // Remove very large files immediately after execution
+
+    if (!Fork())
+    {
+        // wordexp performs shell-like path expansion
+        // Mostly to expand ~ into /home/user
+        std::string cache_folder = wordexp(MainConfig::Instance().get_cache_folder_path());
+        int cachedirfd = ::open(cache_folder.c_str(), O_DIRECTORY);
+
+        // Remove files that haven't been accessed in a week
+        struct statx stx{ };
+        if (::statx(cachedirfd, LAST_SCAN, AT_STATX_SYNC_AS_STAT | AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT, STATX_ALL, &stx) == 0 &&
+            stx.stx_atime.tv_sec && time(nullptr) - stx.stx_atime.tv_sec <= AN_HOUR)
+            exit(0);
+
+        DEBUG << __FN__ "Scanning cache folder: " << cache_folder << "..." << Endl;
+
+        DIR* cache_dirstream = opendir(cache_folder.c_str());
+
+        if (cache_dirstream == nullptr)
+        {
+            ERR << __FN__ "Couldn't open \"" << cache_folder << "\". "
+                << strerrorname_np(errno) << ": " << strerrordesc_np(errno) << Endl;
+            exit(ERROR_CACHE);
+        }
+
+
+        errno = 0;
+        for (dirent* entry = nullptr; (entry = readdir(cache_dirstream)) != nullptr;)
+        {
+            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+                continue;
+
+            // Remove files that haven't been accessed in a week
+            if (::statx(cachedirfd, entry->d_name, AT_STATX_SYNC_AS_STAT | AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT, STATX_ALL, &stx) == 0 &&
+                stx.stx_atime.tv_sec && time(nullptr) - stx.stx_atime.tv_sec > A_WEEK)
+                rm(cache_folder + "/" + entry->d_name);
+
+            errno = 0;
+        }
+
+        // Create
+
+        timespec current_time[2];
+
+        // UTIME_NOW tells the VFS layer to fetch the current system clock
+        current_time[0].tv_nsec = UTIME_NOW; // Updates Access Time (atim)
+        current_time[1].tv_nsec = UTIME_NOW; // Updates Modification Time (mtim)
+
+        // The tv_sec fields are ignored when tv_nsec is set to UTIME_NOW,
+        // but initializing them to 0 is standard practice to prevent garbage data.
+        current_time[0].tv_sec = 0;
+        current_time[1].tv_sec = 0;
+
+        // Mark last scan date
+        creat((cache_folder + "/" + LAST_SCAN).c_str(), S_IRUSR | S_IRGRP | S_IROTH);
+
+        // Execute the system call
+        if (utimensat(cachedirfd, LAST_SCAN, current_time, 0) == -1)
+        {
+            WARN << __FN__ "utimensat() failed. "
+                << strerrorname_np(errno) << ": " << strerrordesc_np(errno) << Endl;
+        }
+
+        exit(0);
     }
 }
 
