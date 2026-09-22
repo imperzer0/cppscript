@@ -15,11 +15,14 @@ FetchContent_Declare(
         GIT_TAG        v3.4.0
 )
 
-FetchContent_MakeAvailable(xxhash)
-FetchContent_MakeAvailable(tomlplusplus)
+FetchContent_MakeAvailable(xxhash tomlplusplus)
 
 set(CMAKE_CXX_STANDARD 26)
 
 add_executable(cppscript main.cpp)
 
-target_link_libraries(cppscript PRIVATE xxhash tomlplusplus::tomlplusplus)
+# Enable inline mode for xxHash headers
+target_compile_definitions(cppscript PRIVATE XXH_INLINE_ALL)
+target_include_directories(cppscript PRIVATE ${xxhash_SOURCE_DIR})
+
+target_link_libraries(cppscript PRIVATE tomlplusplus::tomlplusplus)
