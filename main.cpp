@@ -25,7 +25,7 @@ int main(int argc, char* argv[], char* envp[])
     }
 
     // Print help on --help or -h
-    if (argc == 2 && (!strcmp(argv[2], "--help") || !strcmp(argv[2], "-h")))
+    if (argc == 2 && (!strcmp(argv[1], "--help") || !strcmp(argv[1], "-h")))
     {
         print_help(argv[0]);
         return 1;
