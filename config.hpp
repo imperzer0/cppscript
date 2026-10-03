@@ -106,4 +106,4 @@ public:
     }
 };
 
-MainConfig* MainConfig::instance = nullptr;
+inline MainConfig* MainConfig::instance = nullptr;

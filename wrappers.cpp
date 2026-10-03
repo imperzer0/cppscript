@@ -19,17 +19,9 @@
 #include "Log.hpp"
 #include "return_codes.h"
 
-// fork() and wait for child pid
-pid_t Fork(bool wait = true)
+void Wait(pid_t pid)
 {
-    pid_t pid = fork();
-    if (pid < 0)
-    {
-        ERR << "fork() syscall failed." << Endl;
-        exit(ERROR_FORK);
-    }
-
-    if (pid > 0 && wait)
+    if (pid > 0)
     {
         INFO << "Waiting for child..." << Endl;
 
@@ -53,6 +45,19 @@ pid_t Fork(bool wait = true)
 
         INFO << "Resuming parent process..." << Endl;
     }
+}
+
+// fork() and wait for child pid
+pid_t Fork(bool wait = true)
+{
+    pid_t pid = fork();
+    if (pid < 0)
+    {
+        ERR << "fork() syscall failed." << Endl;
+        exit(ERROR_FORK);
+    }
+
+    if (wait) Wait(pid);
 
     return pid;
 }
@@ -87,7 +92,7 @@ int mkdir_p(const std::string& path, mode_t mode)
 
     snprintf(tmp, sizeof(tmp), "%s", path.c_str());
     len = strlen(tmp);
-    if (tmp[len - 1] == '/') tmp[len - 1] = 0;
+    if (len > 0 && tmp[len - 1] == '/') tmp[len - 1] = 0;
 
     for (p = tmp + 1; *p; ++p)
     {
@@ -131,14 +136,10 @@ void rm(const std::string& path)
 // Example: /foo/bar/1.cpp -> /foo/bar
 std::string Dirname(const std::string& path)
 {
-    char tmp[path.length() + 1];
-    strncpy(tmp, path.c_str(), path.length() + 1);
-    tmp[path.length()] = 0;
-
-    char* result = dirname(tmp);
+    std::string tmp = path;
+    char* result = dirname(tmp.data());
 
     std::string res(result);
-
     return std::move(res);
 }
 

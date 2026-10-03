@@ -64,7 +64,7 @@ private:
     friend Log&& operator<<(Log&& log, const Out& out);
 };
 
-Log::Level Log::max_level = Log::None;
+inline Log::Level Log::max_level = Log::None;
 
 // Without Endl:
 // [ERR] some error \n

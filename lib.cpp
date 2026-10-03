@@ -41,6 +41,7 @@ bool is_available_in_path(const std::string& executable)
             continue; // Skip "" directories
 
         std::string executable_path(realpath(directory.c_str()));
+        if (executable.empty()) continue; // If resolution fails
         executable_path += "/";
         executable_path += executable;
 
@@ -168,6 +169,11 @@ void remove_shebang(const std::string& source, const std::string& dest)
 
 void print_array(const std::vector<char*>& arr, const std::string& name) noexcept
 {
+    if (arr.empty())
+    {
+        DEBUG << "  " << name << " = { };" << Endl;
+        return;
+    }
     auto arr_line = DEBUG;
     arr_line = std::move(arr_line) << "  " << name << " = { " << (arr[0] != nullptr ? arr[0] : "NULL");
     for (int i = 1; i < arr.size(); ++i)
@@ -177,6 +183,11 @@ void print_array(const std::vector<char*>& arr, const std::string& name) noexcep
 
 void print_array(const std::deque<std::string>& arr, const std::string& name) noexcept
 {
+    if (arr.empty())
+    {
+        DEBUG << "  " << name << " = { };" << Endl;
+        return;
+    }
     auto arr_line = DEBUG;
     arr_line = std::move(arr_line) << "  " << name << " = { " << (!arr[0].empty() ? arr[0] : "NULL");
     for (int i = 1; i < arr.size(); ++i)
@@ -244,9 +255,9 @@ std::deque<std::string> split_output(int fd, char separator = ' ')
         auto begin_fraction = w_begin > PIPE_BUF ? w_begin - PIPE_BUF : 0;
         tmp.append(prev_buffer + begin_fraction, w_end - begin_fraction);
 
-        while (
-            tmp.back() == '\0' ||
-            tmp.back() == separator
+        while (!tmp.empty() && (
+                tmp.back() == '\0' ||
+                tmp.back() == separator)
         )
             tmp.pop_back();
 
@@ -312,7 +323,8 @@ std::string compile(const std::string& source, std::vector<char*> envp)
     int stdout_pipe[2]{-1, -1};
     pipe(stdout_pipe);
 
-    if (!Fork(false)) // g++ -MM
+    pid_t resolv_d;
+    if (!((resolv_d = Fork(false)))) // g++ -MM
     {
         close(stdout_pipe[0]);
 
@@ -339,6 +351,8 @@ std::string compile(const std::string& source, std::vector<char*> envp)
 
     auto dependencies = split_output(stdout_pipe[0]);
     dependencies.pop_front(); // remove "main.cpp.o:" which is always the first element
+    Wait(resolv_d);
+
     decltype(dependencies) filtered_dependencies;
 
     for (auto& dependency : dependencies)
@@ -477,7 +491,7 @@ void cache_autoclean(const std::string& last_file)
         st.st_size >= 64 * 1024 * 1024)
         rm(last_file); // Remove very large files immediately after execution
 
-    if (!Fork())
+    if (!Fork(false))
     {
         // wordexp performs shell-like path expansion
         // Mostly to expand ~ into /home/user
