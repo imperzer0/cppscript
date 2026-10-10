@@ -1,0 +1,83 @@
+name: Automated Release & Package Publication
+
+on:
+  push:
+    tags:
+      - '*\.*\.*' # Triggers on a version tag
+
+permissions:
+  contents: write
+
+jobs:
+  release-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository Source
+        uses: actions/checkout@v4
+
+      - name: Install GCC 14
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++-14
+
+      - name: Initialize Build Environment & Synthesize .deb Package
+        run: |
+          # Initialize and build with the packaging flag enabled
+          cmake -B build \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DGENERATE_PACKAGE=ON \
+                -DCMAKE_C_COMPILER=gcc-14 \
+                -DCMAKE_CXX_COMPILER=g++-14
+          cmake --build build -j$(nproc)
+          
+          # Invoke CPack to generate the .deb package
+          cpack --config build/CPackConfig.cmake -G DEB
+
+      - name: Provision GitHub Release and Attach Artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            cppscript_*_*.deb
+            build/cppscript
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+
+
+
+      - name: Conditional Checkout of GitHub Pages Branch
+        run: |
+          if git ls-remote --exit-code --heads origin gh-pages; then
+            echo "gh-pages branch exists. Cloning..."
+            git clone --branch gh-pages --depth 1 https://github.com/${{ github.repository }} public
+          else
+            echo "gh-pages branch does not exist yet. Creating clean public directory..."
+            mkdir -p public
+          fi
+
+      - name: Prepare Workspace Directory Structure
+        run: |
+          mkdir -p public/conf
+          cp .apt/conf/distributions public/conf/distributions
+          mkdir -p packages
+          cp cppscript_*_*.deb packages/
+
+      - name: Import GPG Private Key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_DEB_PRK }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+
+      - name: Ingest Packages and Generate Index Manifests
+        run: |
+          sudo apt-get update && sudo apt-get install -y reprepro
+          gpg --armor --export ${{ secrets.GPG_DEB_KEY_ID }} > public/public.gpg
+          reprepro -b public includedeb stable packages/*.deb
+
+      - name: Deploy Updated Repository to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.ACCESS_TOKEN }}
+          publish_dir: ./public
+          publish_branch: gh-pages
