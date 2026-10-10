@@ -6,12 +6,16 @@
 #define CPPSCRIPT_CONSTANTS_H
 
 #ifndef APP_VERSION
-#define APP_VERSION "1.5.3"
+#define APP_VERSION "@PROJECT_VERSION@"
 #endif //APP_VERSION
 
 #ifndef APPNAME
-#define APPNAME "cppscript"
+#define APPNAME "@PROJECT_NAME@"
 #endif //APPNAME
+
+#ifndef DESCRIPTION
+#define DESCRIPTION "@PROJECT_DESCRIPTION@"
+#endif //DESCRIPTION
 
 #define __FN__ __PRETTY_FUNCTION__ << ": "
 
