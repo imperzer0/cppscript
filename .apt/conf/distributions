@@ -1,0 +1,7 @@
+Origin: GitHub-Pages-APT
+Label: APT-Repository
+Codename: stable
+Architectures: amd64 arm64 i386
+Components: main
+Description: Automated GitHub Pages APT Repository
+SignWith: 02486A23BCC13EF398547FA26F6C976F4D8C9FA0

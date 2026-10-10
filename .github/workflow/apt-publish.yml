@@ -1,0 +1,57 @@
+name: Publish APT Repository
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-repository:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Repository
+        uses: actions/checkout@v4
+
+      - name: Checkout Existing GitHub Pages Branch
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: public
+        continue-on-error: true
+
+      - name: Prepare Workspace Directory Structure
+        run: |
+          mkdir -p public/conf
+          cp .apt/conf/distributions public/conf/distributions
+          mkdir -p packages
+
+      - name: Download Binary Assets from Latest Release
+        uses: dsaltares/fetch-gh-release-asset@master
+        with:
+          version: 'latest'
+          file: '.*\.deb'
+          regex: true
+          target: 'packages'
+
+      - name: Import GPG Private Key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_DEB_PRK }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+
+      - name: Ingest Packages and Generate Index Manifests
+        run: |
+          sudo apt-get update && sudo apt-get install -y reprepro
+          gpg --armor --export ${{ secrets.GPG_DEB_KEY_ID }} > public/public.gpg
+          reprepro -b public includedeb stable packages/*.deb
+
+      - name: Deploy Updated Repository to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.ACCESS_TOKEN }}
+          publish_dir: ./public
+          publish_branch: gh-pages
