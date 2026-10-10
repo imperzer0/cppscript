@@ -1,0 +1,15 @@
+Package: cppscript
+Architecture: amd64
+Depends: libc6 (>= 2.31), libstdc++6 (>= 11), g++
+Priority: optional
+Section: devel
+Filename: pool/main/c/cppscript/cppscript_1.5.4_amd64.deb
+Size: 115018
+SHA256: cd0e7662c2bd7e64bfe80718269a00f076f100067c49c9a5e8e6fb56887578e3
+SHA1: aa2b73ae62ebd278cd6293f5ba64deaab56c13fe
+MD5sum: e4681502e9175efd2f415fd5f95ddc13
+Description: Executes a C++ script
+Maintainer: Dmytro Perets <dmytroperets@gmail.com>
+Version: 1.5.4
+Installed-Size: 306
+

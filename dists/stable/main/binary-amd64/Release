@@ -1,0 +1,5 @@
+Component: main
+Origin: GitHub-Pages-APT
+Label: APT-Repository
+Architecture: amd64
+Description: Automated GitHub Pages APT Repository

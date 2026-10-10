@@ -1,0 +1,19 @@
+Origin: GitHub-Pages-APT
+Label: APT-Repository
+Codename: stable
+Date: Sat, 10 Oct 2026 14:32:29 UTC
+Architectures: amd64
+Components: main
+Description: Automated GitHub Pages APT Repository
+MD5Sum:
+ 00357855358103f4c0aa80c5ae8aee9e 477 main/binary-amd64/Packages
+ 858f2a235221d729285f02c2aacb34cf 358 main/binary-amd64/Packages.gz
+ ec39418b2471792a051c91df846e21dd 134 main/binary-amd64/Release
+SHA1:
+ 38d17066bc2044f842c530facda3e87c322368d3 477 main/binary-amd64/Packages
+ e448c04b735c9c9508155c1a7006915b76b202a0 358 main/binary-amd64/Packages.gz
+ 78e6a5bf2a748dc2d733d87b43ab00d24741b5d6 134 main/binary-amd64/Release
+SHA256:
+ 12f7d8011c788f95acac200f9c0f9de9d71c5c11285557a92034b9ec5fef3e8d 477 main/binary-amd64/Packages
+ 53297cee70fa160a68cb3fb824a18a36ee4a36164778f091c7d29723058e43e5 358 main/binary-amd64/Packages.gz
+ c13f2c7f2fad4ca3b31b94837d05244db822ba7646493c860d27de220607de47 134 main/binary-amd64/Release
