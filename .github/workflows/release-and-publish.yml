@@ -73,6 +73,16 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y reprepro
           gpg --armor --export ${{ secrets.GPG_DEB_KEY_ID }} > public/public.gpg
+
+          # Purge the existing package of that version from the 'stable' distribution index
+          # to prevent version collisions
+          VERSION=$(dpkg-deb -f packages/*.deb Version)
+          reprepro -b public remove stable cppscript=$VERSION || true
+
+          # Remove any stale binary packages matching the target filename from the pool directory
+          find public/pool -name "cppscript_${VERSION}_amd64.deb" -delete || true
+
+          # Ingest the newly synthesized package archive
           reprepro -b public includedeb stable packages/*.deb
 
       - name: Deploy Updated Repository to GitHub Pages
