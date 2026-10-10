@@ -1,15 +1,26 @@
 #include <iostream>
+#include <unistd.h>
 
+#include "config.h"
 #include "return_codes.h"
-#include "lib.cpp"
+#include "lib.h"
+#include "Log.hpp"
 
-void print_help(const char* appname)
+void print_version()
 {
+    // Print version and description
+    std::cerr << APPNAME << " v" << APP_VERSION << "   " << DESCRIPTION << std::endl;
+}
+
+void print_help(const char* apppath)
+{
+    print_version();
     // Print help message
-    std::cerr << "Usage: " << appname << " <script> {<arguments>}" << std::endl;
-    std::cerr << std::endl;
-    std::cerr << "  Arguments are optional." << std::endl;
-    std::cerr << std::endl;
+    std::cerr
+        << "Usage: " << apppath << " <script> {<arguments>}" << std::endl
+        << std::endl
+        << "   Arguments are optional." << std::endl
+        << std::endl;
 }
 
 int main(int argc, char* argv[], char* envp[])
@@ -28,7 +39,14 @@ int main(int argc, char* argv[], char* envp[])
     if (argc == 2 && (!strcmp(argv[1], "--help") || !strcmp(argv[1], "-h")))
     {
         print_help(argv[0]);
-        return 1;
+        return 0;
+    }
+
+    // Print version on --version or -v
+    if (argc == 2 && (!strcmp(argv[1], "--version") || !strcmp(argv[1], "-v")))
+    {
+        print_version();
+        return 0;
     }
 
     Log::Set_LogLevel(MainConfig::Instance().get_log_level());

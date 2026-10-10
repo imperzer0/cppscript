@@ -7,6 +7,8 @@
 #ifndef CPPSCRIPT_WRAPPERS_CPP
 #define CPPSCRIPT_WRAPPERS_CPP
 
+#include "wrappers.h"
+
 #include <filesystem>
 #include <string.h>
 #include <unistd.h>
@@ -48,7 +50,7 @@ void Wait(pid_t pid)
 }
 
 // fork() and wait for child pid
-pid_t Fork(bool wait = true)
+pid_t Fork(bool wait)
 {
     pid_t pid = fork();
     if (pid < 0)

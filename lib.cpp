@@ -14,16 +14,21 @@
 #include <fcntl.h>
 #include <dirent.h>
 
-#include "config.hpp"
-#include "wrappers.cpp"
+#include "config.h"
+#include "wrappers.h"
+#include "return_codes.h"
 
 #include <xxhash.h>
 
-#include "constants.h"
+#include <constants.h>
+#include <filesystem>
+#include <unistd.h>
+
 #include "Log.hpp"
 #define XXH_STATIC_LINKING_ONLY
 
 
+// Checks whether a given file is in any of the directories of $PATH
 bool is_available_in_path(const std::string& executable)
 {
     const char* pathenv = std::getenv("PATH");
